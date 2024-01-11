@@ -10,8 +10,8 @@ pygame.init()
 pygame.display.set_caption("Platformer")
 
 WIDTH, HEIGHT = 1000, 800
-FPS = 60
-PLAYER_VEL = 5
+FPS = 120
+PLAYER_VEL = 10
 
 window = pygame.display.set_mode((WIDTH, HEIGHT))
 #ansh
@@ -39,7 +39,8 @@ def load_sprite_sheets(dir1, dir2, width, height, direction=False):
             all_sprites[image.replace(".png", "") + "_right"] = sprites
             all_sprites[image.replace(".png", "") + "_left"] = flip(sprites)
         else:
-            all_sprites[image.replace(".png", "")] = sprites
+            sprite_name = image.replace(".png", "")
+            all_sprites[sprite_name] = sprites
 
     return all_sprites
 
@@ -59,7 +60,7 @@ class Player(pygame.sprite.Sprite):
     COLOR = (255, 0, 0)
     GRAVITY = 1
     SPRITES = load_sprite_sheets("MainCharacters", "Enchantress", 128, 128, True)
-    ANIMATION_DELAY = 3
+    ANIMATION_DELAY = 5
 
     def __init__(self, x, y, width, height):
         super().__init__()
@@ -136,7 +137,7 @@ class Player(pygame.sprite.Sprite):
     def update_sprite(self):
         sprite_sheet = "idle"
         if self.hit:
-            sprite_sheet = "hit"
+            sprite_sheet = "fall"
         elif self.y_vel < 0:
             if self.jump_count == 1:
                 sprite_sheet = "jump"
@@ -148,7 +149,10 @@ class Player(pygame.sprite.Sprite):
             sprite_sheet = "run"
 
         sprite_sheet_name = sprite_sheet + "_" + self.direction
+        if sprite_sheet_name not in self.SPRITES:
+            sprite_sheet_name = "idle_" + self.direction
         sprites = self.SPRITES[sprite_sheet_name]
+        
         sprite_index = (self.animation_count //
                         self.ANIMATION_DELAY) % len(sprites)
         self.sprite = sprites[sprite_index]
@@ -244,6 +248,9 @@ def draw(window, background, bg_image, player, objects, offset_x):
         obj.draw(window, offset_x)
 
     player.draw(window, offset_x)
+    font = pygame.font.SysFont(None, 36)
+    coins_text = font.render(f"Coins: {Coin.COLLECTED_COINS}", True, (255, 255, 255))
+    window.blit(coins_text, (10, 50))
 
     pygame.display.update()
 
@@ -298,34 +305,52 @@ def handle_move(player, objects):
             player.make_hit()
 
 #Aditya
-            
+class Coin(Object):
+    COLLECTED_COINS = 0
 
-#Ansh&Rishabh           
+    def __init__(self, x, y, width, height):
+        super().__init__(x, y, width, height, "coin")
+        self.coin_sprites = load_sprite_sheets("Items", "Fruits", width, height)
+        self.image = self.coin_sprites.get("Coin", [pygame.Surface((width, height))])[0]
+        self.mask = pygame.mask.from_surface(self.image)
+        self.collected = False
+
+    def draw(self, win, offset_x):
+        if not self.collected:
+            win.blit(self.image, (self.rect.x - offset_x, self.rect.y))
+
+    def handle_collision(self, player):
+        if not self.collected and pygame.sprite.collide_mask(player, self):
+            self.collected = True
+            Coin.COLLECTED_COINS += 1
+
+#Ansh&Rishabh
 def main(window):
     clock = pygame.time.Clock()
     background, bg_image = get_background("Pink.png")
 
     block_size = 96
 
-    player = Player(50, 100, 50, 50)
+
+    player = Player(-40, 100, 20, 20)
     fire = Fire(100, HEIGHT - block_size - 64, 16, 32)
     fire.on()
-    fire2 = Fire(150, HEIGHT - block_size - 64, 16, 32)
-    fire2.on()
-    fire3 = Fire(200, HEIGHT - block_size - 64, 16, 32)
-    fire3.on()
+    
+    coin1 = Coin(500, HEIGHT - block_size - 64, 32, 32)
+    coin2 = Coin(1000, HEIGHT - block_size - 64, 32, 32)
     
     floor = [Block(i * block_size, HEIGHT - block_size, block_size)
              for i in range(-WIDTH // block_size, (WIDTH * 2) // block_size)]
    
     objects = [*floor, Block(0, HEIGHT - block_size * 2, block_size),
-               Block(block_size * 3, HEIGHT - block_size * 4, block_size *2,), fire,fire2,fire3,]
+               Block(block_size * 3, HEIGHT - block_size * 4, block_size *2,), fire, coin1, coin2,]
     objects = [*objects, Block(block_size * 6, HEIGHT - block_size * 2, block_size),]
     spike = SpikedBlock(100, HEIGHT - block_size * 2, block_size)
     
 
     offset_x = 0
     scroll_area_width = 200
+    coin_count = 0
 
     run = True
     while run:
@@ -342,6 +367,20 @@ def main(window):
 
         player.loop(FPS)
         fire.loop()
+
+        for coin in [coin1, coin2]:
+            coin.handle_collision(player)
+
+        draw(window, background, bg_image, player, objects, offset_x)
+
+        if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) or (
+                (player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
+            offset_x += player.x_vel
+
+        if player.rect.y > HEIGHT:
+            run = False
+            break
+        
         handle_move(player, objects)
         draw(window, background, bg_image, player, objects, offset_x)
 
@@ -353,8 +392,11 @@ def main(window):
             run = False
             break    
         font = pygame.font.SysFont(None, 36)
+        coin_text = font.render(f"Coins: {Coin.COLLECTED_COINS}", True, (255, 255, 255))
+        window.blit(coin_text, (10, 50))
         health_text = font.render(f"Health: {player.health}", True, (255, 255, 255))
         window.blit(health_text, (10, 10))
+
         pygame.display.flip()
     pygame.quit()
     quit()
@@ -363,12 +405,5 @@ def main(window):
 if __name__ == "__main__":
     main(window)
 
-
-#Ansh&Rishabh           
-
-
-
-
-#Ansh&Rishabh           
     
 
