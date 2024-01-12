@@ -10,7 +10,7 @@ pygame.init()
 pygame.display.set_caption("Platformer")
 
 WIDTH, HEIGHT = 1000, 800
-FPS = 120
+FPS = 30
 PLAYER_VEL = 10
 
 window = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -52,6 +52,13 @@ def get_block(size):
     rect = pygame.Rect(96, 0, size, size)
     surface.blit(image, (0, 0), rect)
     return pygame.transform.scale2x(surface)
+def get_train(width,height):
+    path = join("assets", "MainCharacters", "train.png")
+    image = pygame.image.load(path).convert_alpha()
+    surface = pygame.Surface((width, height), pygame.SRCALPHA, 32)
+    rect = pygame.Rect(96, 0, width, height)
+    surface.blit(image, (0, 0), rect)
+    return pygame.transform.scale2x(surface)
 
 #ansh
 
@@ -78,7 +85,7 @@ class Player(pygame.sprite.Sprite):
 
 
     def jump(self):
-        self.y_vel = -self.GRAVITY * 8
+        self.y_vel = -self.GRAVITY * 10
         self.animation_count = 0
         self.jump_count += 1
         if self.jump_count == 1:
@@ -188,13 +195,43 @@ class Block(Object):
         self.image.blit(block, (0, 0))
         self.mask = pygame.mask.from_surface(self.image)
 
+class Train(Object):
+    def __init__(self, x, y, width, height):
+        super().__init__(x, y, width, height)
+        train = get_train(width,height)
+        self.image.blit(train, (0, 0))
+        self.mask = pygame.mask.from_surface(self.image)
+
+def get_spike(size):
+    path = join("assets", "Traps","Spike Head", "Idle.png")
+    image = pygame.image.load(path).convert_alpha()
+    surface = pygame.Surface((size, size), pygame.SRCALPHA, 32)
+    rect = pygame.Rect(0, 0, size, size)
+    surface.blit(image, (0, 0), rect)
+    return pygame.transform.scale2x(surface)
 class SpikedBlock(Object):
     def __init__(self, x, y, size):
         super().__init__(x, y, size, size)
-        block = get_block(size)
+        block = get_spike(size)
         self.image.blit(block, (0, 0))
         self.mask = pygame.mask.from_surface(self.image)
+class Building(Object):
+    def __init__(self, x, y, width, height):
+        super().__init__(x, y, width, height)
+        building = pygame.image.load(join("assets", "Building", "building.png")).convert_alpha()
+        self.image.blit(building, (0, 0))
+        self.mask = pygame.mask.from_surface(self.image)
 
+def display_victory_scene(window):
+    # Code to display the victory scene
+    star_rating = Coin.COLLECTED_COINS
+    victory_font = pygame.font.SysFont(None, 72)
+    victory_text = victory_font.render("Victory!", True, (0, 255, 0))
+    VadaPav = victory_font.render(f"VadaPav:{star_rating} ", True, (0, 255, 0))
+    window.blit(victory_text, (WIDTH // 2 - victory_text.get_width() // 2, HEIGHT // 2 - victory_text.get_height() // 2))
+    window.blit(VadaPav, (WIDTH // 2 - VadaPav.get_width() // 2, HEIGHT // 2 + 50))
+    pygame.display.flip()
+    pygame.time.wait(3000)        
 
 class Fire(Object):
     ANIMATION_DELAY = 3
@@ -249,8 +286,10 @@ def draw(window, background, bg_image, player, objects, offset_x):
 
     player.draw(window, offset_x)
     font = pygame.font.SysFont(None, 36)
-    coins_text = font.render(f"Coins: {Coin.COLLECTED_COINS}", True, (255, 255, 255))
+    coins_text = font.render(f"VadaPav: {Coin.COLLECTED_COINS}", True, (255, 255, 255))
     window.blit(coins_text, (10, 50))
+    health_text = font.render(f"Health: {player.health}", False, (255, 255, 255))
+    window.blit(health_text, (10, 10))
 
     pygame.display.update()
 
@@ -309,9 +348,9 @@ class Coin(Object):
     COLLECTED_COINS = 0
 
     def __init__(self, x, y, width, height):
-        super().__init__(x, y, width, height, "coin")
-        self.coin_sprites = load_sprite_sheets("Items", "Fruits", width, height)
-        self.image = self.coin_sprites.get("Coin", [pygame.Surface((width, height))])[0]
+        super().__init__(x, y, width, height, "Idle")
+        self.coin_sprites = load_sprite_sheets("Traps", "Rock Head", width, height)
+        self.image = self.coin_sprites.get("Idle", [pygame.Surface((width, height))])[0]
         self.mask = pygame.mask.from_surface(self.image)
         self.collected = False
 
@@ -323,6 +362,9 @@ class Coin(Object):
         if not self.collected and pygame.sprite.collide_mask(player, self):
             self.collected = True
             Coin.COLLECTED_COINS += 1
+            #once collected the coin will disappear
+            self.rect.x = -1000
+            
 
 #Ansh&Rishabh
 def main(window):
@@ -336,22 +378,53 @@ def main(window):
     fire = Fire(100, HEIGHT - block_size - 64, 16, 32)
     fire.on()
     
-    coin1 = Coin(500, HEIGHT - block_size - 64, 32, 32)
+    coin1 = Coin(800, HEIGHT - block_size - 64, 32, 32)
     coin2 = Coin(1000, HEIGHT - block_size - 64, 32, 32)
-    
+    coin3 = Coin(1200, HEIGHT - block_size - 158,32, 32)
+
+    floor1 = Block(2000, HEIGHT - block_size, block_size)
+    floor2 = Block(2200, HEIGHT - block_size, block_size)
+    #create 20 floors
+    floor3 = Block(2400, HEIGHT - block_size, block_size)
+    floor4 = Block(2600, HEIGHT - block_size, block_size)
+    floor5 = Block(2800, HEIGHT - block_size, block_size)
+    train = Train(1200, HEIGHT - block_size - 96, 96, 96)
+    train2 = Train(1296, HEIGHT - block_size - 96, 96, 96)
     floor = [Block(i * block_size, HEIGHT - block_size, block_size)
              for i in range(-WIDTH // block_size, (WIDTH * 2) // block_size)]
+    #append floors after floor 5
+    floor6 = Block(2400, HEIGHT - block_size, block_size)
+   
    
     objects = [*floor, Block(0, HEIGHT - block_size * 2, block_size),
-               Block(block_size * 3, HEIGHT - block_size * 4, block_size *2,), fire, coin1, coin2,]
+               Block(block_size * 3, HEIGHT - block_size * 4, block_size *2,), fire, coin1, coin2, floor1,floor2,train,train2, coin3,floor3,floor4,floor5,floor6,]
     objects = [*objects, Block(block_size * 6, HEIGHT - block_size * 2, block_size),]
-    spike = SpikedBlock(100, HEIGHT - block_size * 2, block_size)
-    
+    spike = SpikedBlock(200, HEIGHT - block_size * 2, block_size)
+    objects.append(spike)
+    objects.append(SpikedBlock(300, HEIGHT - block_size * 2, block_size))
+    objects.append(SpikedBlock(400, HEIGHT - block_size * 2, block_size))
+    fire1= Fire(900, HEIGHT - block_size - 64, 16, 32)
+    fire1.on()
+    objects.append(fire1)
+
+
+    objects.append(Train(1296+96, HEIGHT - block_size - 96, 96, 96))
+    objects.append(Train(2500, HEIGHT - block_size - 96, 96, 96))
+    objects.append(Train(2596, HEIGHT - block_size - 96*2, 96, 96))
+    objects.append(Train(2596+96, HEIGHT - block_size - 96*3, 96, 96))
+
+
+    for i in range(0, 500-90, 96):
+        objects.append(Train(1296+96+i, HEIGHT - block_size - 96, 96, 96))
+    for i in range(0,  1000, 96):
+        objects.append(Block(2400+i, HEIGHT - block_size, block_size))    
 
     offset_x = 0
     scroll_area_width = 200
-    coin_count = 0
 
+    coin_count = 0
+    building = Building(2800, HEIGHT - 530, 600, 400)  # Adjust the position and size accordingly
+    objects.append(building)
     run = True
     while run:
         clock.tick(FPS)
@@ -367,8 +440,9 @@ def main(window):
 
         player.loop(FPS)
         fire.loop()
+        fire1.loop()
 
-        for coin in [coin1, coin2]:
+        for coin in [coin1, coin2, coin3]:
             coin.handle_collision(player)
 
         draw(window, background, bg_image, player, objects, offset_x)
@@ -376,10 +450,29 @@ def main(window):
         if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) or (
                 (player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
             offset_x += player.x_vel
-
+        
         if player.rect.y > HEIGHT:
-            run = False
-            break
+            
+            #show game over screen and if all of the coins are collected show 3 stars
+            game_over_font = pygame.font.SysFont(None, 72)
+            game_over_text = game_over_font.render("Game Over", True, (255, 0, 0))
+            window.blit(game_over_text, (WIDTH // 2 - game_over_text.get_width() // 2, HEIGHT // 2 - game_over_text.get_height() // 2))
+            pygame.display.flip()
+            pygame.time.wait(2000)  # Wait for 2 seconds
+
+            # Star rating based on collected coin
+            star_rating = Coin.COLLECTED_COINS
+            stars_font = pygame.font.SysFont(None, 48)
+            stars_text = stars_font.render(f"VadaPav: {star_rating}", True, (255, 255, 0))
+            window.blit(stars_text, (WIDTH // 2 - stars_text.get_width() // 2, HEIGHT // 2 + 50))
+            pygame.display.flip()
+            pygame.time.wait(3000)
+            
+        if player.rect.colliderect(building.rect):
+            if player.rect.centerx >= building.rect.centerx - player.rect.width/2 and player.rect.centerx <= building.rect.centerx + player.rect.width/2:
+                display_victory_scene(window)
+                break
+            
         
         handle_move(player, objects)
         draw(window, background, bg_image, player, objects, offset_x)
@@ -391,12 +484,10 @@ def main(window):
         if player.rect.y > HEIGHT:
             run = False
             break    
-        font = pygame.font.SysFont(None, 36)
-        coin_text = font.render(f"Coins: {Coin.COLLECTED_COINS}", True, (255, 255, 255))
-        window.blit(coin_text, (10, 50))
-        health_text = font.render(f"Health: {player.health}", True, (255, 255, 255))
-        window.blit(health_text, (10, 10))
+        
+        #add image for the background at x=2800
 
+    
         pygame.display.flip()
     pygame.quit()
     quit()
