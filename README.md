@@ -1,6 +1,11 @@
 # Platformer Game
+This game is inspired by how i travel everyday to my college by local trains eating vadapavs lol.
+A dynamic and exciting 2D platformer game built with Python and Pygame. Navigate through challenging levels, avoid obstacles, and collect Vadapavs to progress!
+## Preview
 
-A dynamic and exciting 2D platformer game built with Python and Pygame. Navigate through challenging levels, avoid obstacles, and collect coins to progress!
+
+https://github.com/rizzabh/grp-pygame/assets/133371863/3e153f9a-02dc-437e-a6ec-d3f3ff15cad3
+
 
 ## Features
 
